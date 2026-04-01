@@ -28,7 +28,7 @@ ai_intern_assessment/
 
 ---
 
-## Challenge 1 — The Empathy Engine
+## Challenge 1 - The Empathy Engine
 
 ### What it does
 - Accepts text input via **CLI** or a **FastAPI web UI**
