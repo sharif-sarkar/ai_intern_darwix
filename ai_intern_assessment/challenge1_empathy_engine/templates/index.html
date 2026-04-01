@@ -1,0 +1,204 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Empathy Engine 🎙</title>
+  <style>
+    :root {
+      --bg: #0f0f13;
+      --card: #1a1a24;
+      --border: #2e2e42;
+      --accent: #7c6cff;
+      --accent2: #c084fc;
+      --text: #e2e2f0;
+      --muted: #888;
+      --joy: #fbbf24; --anger: #ef4444; --sadness: #60a5fa;
+      --fear: #a78bfa; --surprise: #fb923c; --disgust: #4ade80; --neutral: #94a3b8;
+    }
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    body {
+      background: var(--bg); color: var(--text);
+      font-family: 'Segoe UI', system-ui, sans-serif;
+      min-height: 100vh; display: flex; flex-direction: column; align-items: center;
+      padding: 40px 20px;
+    }
+    header { text-align: center; margin-bottom: 40px; }
+    header h1 { font-size: 2.4rem; font-weight: 700;
+      background: linear-gradient(135deg, var(--accent), var(--accent2));
+      -webkit-background-clip: text; -webkit-text-fill-color: transparent; }
+    header p { color: var(--muted); margin-top: 8px; font-size: 1rem; }
+
+    .card {
+      background: var(--card); border: 1px solid var(--border);
+      border-radius: 16px; padding: 28px; width: 100%; max-width: 680px;
+      margin-bottom: 24px;
+    }
+    textarea {
+      width: 100%; background: var(--bg); border: 1px solid var(--border);
+      border-radius: 10px; color: var(--text); font-size: 1rem;
+      padding: 14px; resize: vertical; min-height: 120px;
+      outline: none; transition: border-color .2s;
+    }
+    textarea:focus { border-color: var(--accent); }
+    button {
+      margin-top: 14px; width: 100%; padding: 14px;
+      background: linear-gradient(135deg, var(--accent), var(--accent2));
+      color: #fff; border: none; border-radius: 10px; font-size: 1rem;
+      font-weight: 600; cursor: pointer; transition: opacity .2s;
+    }
+    button:hover { opacity: .85; }
+    button:disabled { opacity: .45; cursor: not-allowed; }
+
+    #result { display: none; }
+
+    .emotion-badge {
+      display: inline-flex; align-items: center; gap: 8px;
+      padding: 8px 18px; border-radius: 999px;
+      font-size: 1.1rem; font-weight: 700; letter-spacing: .03em;
+      margin-bottom: 18px; text-transform: capitalize;
+    }
+
+    .params-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 12px; margin-bottom: 20px; }
+    .param-box {
+      background: var(--bg); border: 1px solid var(--border);
+      border-radius: 10px; padding: 14px; text-align: center;
+    }
+    .param-box .label { font-size: .75rem; color: var(--muted); text-transform: uppercase; letter-spacing: .06em; }
+    .param-box .value { font-size: 1.4rem; font-weight: 700; color: var(--accent2); margin-top: 4px; }
+
+    .bars { margin-bottom: 20px; }
+    .bar-row { display: flex; align-items: center; gap: 10px; margin-bottom: 8px; }
+    .bar-label { width: 80px; font-size: .85rem; color: var(--muted); text-transform: capitalize; }
+    .bar-track { flex: 1; height: 8px; background: var(--border); border-radius: 4px; overflow: hidden; }
+    .bar-fill { height: 100%; border-radius: 4px; transition: width .6s ease; }
+    .bar-pct { width: 44px; text-align: right; font-size: .8rem; color: var(--muted); }
+
+    audio { width: 100%; margin-top: 4px; border-radius: 8px; }
+
+    .spinner {
+      border: 3px solid var(--border); border-top-color: var(--accent);
+      border-radius: 50%; width: 28px; height: 28px;
+      animation: spin .7s linear infinite; margin: 20px auto;
+    }
+    @keyframes spin { to { transform: rotate(360deg); } }
+
+    .error { color: #ef4444; font-size: .9rem; margin-top: 10px; }
+  </style>
+</head>
+<body>
+  <header>
+    <h1>🎙 Empathy Engine</h1>
+    <p>Dynamic emotion-driven voice synthesis</p>
+  </header>
+
+  <div class="card">
+    <textarea id="inputText" placeholder="Enter any text… e.g. 'I just got promoted! This is the best day of my life!' or 'I can't believe they lied to me. I'm absolutely furious.'"></textarea>
+    <button id="btn" onclick="synthesize()">Synthesize Speech</button>
+    <div id="spinner" style="display:none"><div class="spinner"></div></div>
+    <div id="errorMsg" class="error"></div>
+  </div>
+
+  <div class="card" id="result">
+    <div id="emotionBadge" class="emotion-badge"></div>
+
+    <div class="params-grid">
+      <div class="param-box">
+        <div class="label">Rate</div>
+        <div class="value" id="pRate">—</div>
+      </div>
+      <div class="param-box">
+        <div class="label">Pitch</div>
+        <div class="value" id="pPitch">—</div>
+      </div>
+      <div class="param-box">
+        <div class="label">Volume</div>
+        <div class="value" id="pVolume">—</div>
+      </div>
+    </div>
+
+    <p style="font-size:.8rem;color:var(--muted);margin-bottom:10px">Emotion Distribution</p>
+    <div class="bars" id="bars"></div>
+
+    <p style="font-size:.8rem;color:var(--muted);margin-bottom:8px">▶ Audio Output</p>
+    <audio id="player" controls></audio>
+  </div>
+
+  <script>
+    const EMOTION_COLORS = {
+      joy: '#fbbf24', anger: '#ef4444', sadness: '#60a5fa',
+      fear: '#a78bfa', surprise: '#fb923c', disgust: '#4ade80', neutral: '#94a3b8'
+    };
+    const EMOTION_EMOJI = {
+      joy: '😄', anger: '😡', sadness: '😢', fear: '😨',
+      surprise: '😲', disgust: '🤢', neutral: '😐'
+    };
+
+    async function synthesize() {
+      const text = document.getElementById('inputText').value.trim();
+      if (!text) return;
+
+      document.getElementById('btn').disabled = true;
+      document.getElementById('spinner').style.display = 'block';
+      document.getElementById('result').style.display = 'none';
+      document.getElementById('errorMsg').textContent = '';
+
+      try {
+        const form = new FormData();
+        form.append('text', text);
+        const res = await fetch('/synthesize', { method: 'POST', body: form });
+        const data = await res.json();
+
+        if (data.error) { document.getElementById('errorMsg').textContent = data.error; return; }
+
+        const color = EMOTION_COLORS[data.emotion] || '#888';
+        const emoji = EMOTION_EMOJI[data.emotion] || '🎭';
+
+        // Badge
+        const badge = document.getElementById('emotionBadge');
+        badge.textContent = `${emoji} ${data.emotion} · ${(data.confidence * 100).toFixed(1)}% confident`;
+        badge.style.background = color + '22';
+        badge.style.color = color;
+        badge.style.border = `1px solid ${color}55`;
+
+        // Params
+        document.getElementById('pRate').textContent = `×${data.vocal_params.rate.toFixed(2)}`;
+        const pitch = data.vocal_params.pitch;
+        document.getElementById('pPitch').textContent = `${pitch >= 0 ? '+' : ''}${pitch.toFixed(1)} st`;
+        const vol = data.vocal_params.volume_db;
+        document.getElementById('pVolume').textContent = `${vol >= 0 ? '+' : ''}${vol.toFixed(1)} dB`;
+
+        // Bars
+        const barsEl = document.getElementById('bars');
+        barsEl.innerHTML = '';
+        const sorted = Object.entries(data.all_emotions).sort((a,b) => b[1]-a[1]);
+        sorted.forEach(([emo, score]) => {
+          const c = EMOTION_COLORS[emo] || '#888';
+          barsEl.innerHTML += `
+            <div class="bar-row">
+              <span class="bar-label">${emo}</span>
+              <div class="bar-track">
+                <div class="bar-fill" style="width:${score*100}%;background:${c}"></div>
+              </div>
+              <span class="bar-pct">${(score*100).toFixed(1)}%</span>
+            </div>`;
+        });
+
+        // Audio
+        document.getElementById('player').src = data.audio_url + '?t=' + Date.now();
+        document.getElementById('result').style.display = 'block';
+
+      } catch (e) {
+        document.getElementById('errorMsg').textContent = 'Server error. Is the backend running?';
+      } finally {
+        document.getElementById('btn').disabled = false;
+        document.getElementById('spinner').style.display = 'none';
+      }
+    }
+
+    document.getElementById('inputText').addEventListener('keydown', e => {
+      if (e.ctrlKey && e.key === 'Enter') synthesize();
+    });
+  </script>
+</body>
+</html>

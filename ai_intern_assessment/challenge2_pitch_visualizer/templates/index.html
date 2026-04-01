@@ -1,0 +1,253 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Pitch Visualizer 🖼</title>
+  <style>
+    :root {
+      --bg: #09090f; --card: #13131c; --border: #252535;
+      --accent: #6366f1; --accent2: #a78bfa;
+      --text: #e0e0f0; --muted: #6b6b8a;
+    }
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    body {
+      background: var(--bg); color: var(--text);
+      font-family: 'Segoe UI', system-ui, sans-serif;
+      min-height: 100vh; padding: 40px 20px;
+      display: flex; flex-direction: column; align-items: center;
+    }
+    header { text-align: center; margin-bottom: 36px; }
+    header h1 {
+      font-size: 2.5rem; font-weight: 800;
+      background: linear-gradient(135deg, var(--accent), var(--accent2));
+      -webkit-background-clip: text; -webkit-text-fill-color: transparent;
+    }
+    header p { color: var(--muted); margin-top: 8px; }
+
+    .form-card {
+      background: var(--card); border: 1px solid var(--border);
+      border-radius: 16px; padding: 28px; width: 100%; max-width: 720px;
+    }
+    label { font-size: .85rem; color: var(--muted); display: block; margin-bottom: 6px; }
+    textarea {
+      width: 100%; background: var(--bg); border: 1px solid var(--border);
+      border-radius: 10px; color: var(--text); font-size: 1rem;
+      padding: 14px; resize: vertical; min-height: 160px;
+      outline: none; transition: border-color .2s; line-height: 1.6;
+    }
+    textarea:focus { border-color: var(--accent); }
+
+    .style-grid {
+      display: flex; flex-wrap: wrap; gap: 10px; margin: 16px 0;
+    }
+    .style-btn {
+      background: var(--bg); border: 1px solid var(--border);
+      border-radius: 8px; padding: 8px 16px; color: var(--muted);
+      cursor: pointer; font-size: .9rem; transition: all .2s;
+    }
+    .style-btn:hover { border-color: var(--accent); color: var(--text); }
+    .style-btn.active {
+      border-color: var(--accent); background: var(--accent)22;
+      color: var(--accent2); font-weight: 600;
+    }
+
+    button.generate {
+      width: 100%; padding: 14px; margin-top: 4px;
+      background: linear-gradient(135deg, var(--accent), var(--accent2));
+      color: #fff; border: none; border-radius: 10px;
+      font-size: 1rem; font-weight: 700; cursor: pointer; transition: opacity .2s;
+    }
+    button.generate:hover { opacity: .85; }
+    button.generate:disabled { opacity: .4; cursor: not-allowed; }
+
+    /* ── Storyboard ── */
+    #storyboard { width: 100%; max-width: 1100px; margin-top: 40px; }
+    #storyboard h2 {
+      font-size: 1.4rem; font-weight: 700; margin-bottom: 20px;
+      color: var(--accent2); display: flex; align-items: center; gap: 10px;
+    }
+    .panels-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fill, minmax(320px, 1fr));
+      gap: 24px;
+    }
+    .panel {
+      background: var(--card); border: 1px solid var(--border);
+      border-radius: 14px; overflow: hidden;
+      animation: fadeUp .5s ease both;
+    }
+    @keyframes fadeUp {
+      from { opacity: 0; transform: translateY(20px); }
+      to   { opacity: 1; transform: translateY(0); }
+    }
+    .panel-img {
+      width: 100%; aspect-ratio: 16/9; object-fit: cover;
+      background: var(--bg);
+    }
+    .panel-skeleton {
+      width: 100%; aspect-ratio: 16/9;
+      background: linear-gradient(90deg, var(--bg) 25%, var(--border) 50%, var(--bg) 75%);
+      background-size: 200% 100%;
+      animation: shimmer 1.4s infinite;
+    }
+    @keyframes shimmer { to { background-position: -200% 0; } }
+    .panel-body { padding: 16px; }
+    .panel-num {
+      font-size: .7rem; text-transform: uppercase; letter-spacing: .1em;
+      color: var(--accent); font-weight: 700; margin-bottom: 6px;
+    }
+    .panel-scene { font-size: .95rem; line-height: 1.5; margin-bottom: 10px; }
+    details { margin-top: 8px; }
+    summary {
+      font-size: .75rem; color: var(--muted); cursor: pointer;
+      user-select: none; list-style: none;
+    }
+    summary::before { content: '▶ '; }
+    details[open] summary::before { content: '▼ '; }
+    .enhanced-prompt {
+      margin-top: 8px; padding: 10px; background: var(--bg);
+      border-radius: 8px; font-size: .8rem; color: var(--muted); line-height: 1.5;
+    }
+
+    .progress-bar-wrap {
+      width: 100%; max-width: 720px; margin-top: 24px;
+      background: var(--border); border-radius: 999px; overflow: hidden;
+      display: none;
+    }
+    .progress-bar {
+      height: 6px; background: linear-gradient(90deg, var(--accent), var(--accent2));
+      width: 0%; transition: width .4s ease; border-radius: 999px;
+    }
+    .progress-label { text-align: center; color: var(--muted); font-size: .85rem; margin-top: 8px; }
+
+    .error-box {
+      background: #1a0a0a; border: 1px solid #5a1a1a; border-radius: 10px;
+      padding: 14px; color: #f87171; font-size: .9rem; margin-top: 16px;
+      max-width: 720px; width: 100%;
+    }
+  </style>
+</head>
+<body>
+  <header>
+    <h1>🖼 Pitch Visualizer</h1>
+    <p>Paste a narrative — get an AI-generated visual storyboard</p>
+  </header>
+
+  <div class="form-card">
+    <label>Your narrative (3–6 sentences work best)</label>
+    <textarea id="storyText" placeholder="Sarah had always dreamed of running her own bakery. After years of saving, she finally opened 'Sweet Mornings' on a rainy Tuesday. The line stretched around the block before she even turned the key. By noon, every croissant was gone and strangers were hugging her. That evening she sat alone in the empty shop, laughing and crying at the same time."></textarea>
+
+    <div style="margin-top:16px">
+      <label>Visual Style</label>
+      <div class="style-grid" id="styleGrid">
+        {% for key, label in styles.items() %}
+        <button class="style-btn {% if loop.first %}active{% endif %}"
+                data-key="{{ key }}" onclick="selectStyle(this)">{{ label }}</button>
+        {% endfor %}
+      </div>
+    </div>
+
+    <button class="generate" id="genBtn" onclick="generate()">✨ Generate Storyboard</button>
+  </div>
+
+  <div class="progress-bar-wrap" id="progressWrap">
+    <div class="progress-bar" id="progressBar"></div>
+  </div>
+  <p class="progress-label" id="progressLabel"></p>
+  <div id="errorBox" class="error-box" style="display:none"></div>
+
+  <div id="storyboard" style="display:none">
+    <h2>🎬 <span id="styleLabel"></span> Storyboard</h2>
+    <div class="panels-grid" id="panelsGrid"></div>
+  </div>
+
+  <script>
+    let selectedStyle = '{{ list(styles.keys())[0] }}';
+
+    function selectStyle(el) {
+      document.querySelectorAll('.style-btn').forEach(b => b.classList.remove('active'));
+      el.classList.add('active');
+      selectedStyle = el.dataset.key;
+    }
+
+    async function generate() {
+      const text = document.getElementById('storyText').value.trim();
+      if (!text) return;
+
+      const btn = document.getElementById('genBtn');
+      btn.disabled = true;
+      document.getElementById('errorBox').style.display = 'none';
+      document.getElementById('storyboard').style.display = 'none';
+      document.getElementById('panelsGrid').innerHTML = '';
+
+      const pw = document.getElementById('progressWrap');
+      const pb = document.getElementById('progressBar');
+      const pl = document.getElementById('progressLabel');
+      pw.style.display = 'block';
+      pb.style.width = '10%';
+      pl.textContent = 'Segmenting narrative and engineering prompts…';
+
+      try {
+        pb.style.width = '30%';
+        const res = await fetch('/generate', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ text, style: selectedStyle }),
+        });
+        pb.style.width = '65%';
+        pl.textContent = 'Generating images…';
+
+        const data = await res.json();
+        pb.style.width = '95%';
+
+        if (data.error) {
+          document.getElementById('errorBox').textContent = data.error;
+          document.getElementById('errorBox').style.display = 'block';
+          return;
+        }
+
+        // Render panels
+        const grid = document.getElementById('panelsGrid');
+        data.panels.forEach((panel, i) => {
+          const div = document.createElement('div');
+          div.className = 'panel';
+          div.style.animationDelay = `${i * 0.08}s`;
+
+          let imgHtml = panel.image_url
+            ? `<img class="panel-img" src="${panel.image_url}" alt="Panel ${panel.panel_num}" loading="lazy" />`
+            : `<div class="panel-skeleton" title="Image generation failed"></div>`;
+
+          div.innerHTML = `
+            ${imgHtml}
+            <div class="panel-body">
+              <div class="panel-num">Panel ${panel.panel_num}</div>
+              <div class="panel-scene">${panel.scene}</div>
+              <details>
+                <summary>View enhanced prompt</summary>
+                <div class="enhanced-prompt">${panel.enhanced_prompt || 'N/A'}</div>
+              </details>
+            </div>`;
+          grid.appendChild(div);
+        });
+
+        document.getElementById('styleLabel').textContent = data.style_label;
+        document.getElementById('storyboard').style.display = 'block';
+        pb.style.width = '100%';
+        pl.textContent = `✅ ${data.panels.length} panels generated`;
+
+        if (data.errors && data.errors.length) {
+          document.getElementById('errorBox').textContent = 'Some warnings: ' + data.errors.join(' | ');
+          document.getElementById('errorBox').style.display = 'block';
+        }
+
+      } catch (e) {
+        document.getElementById('errorBox').textContent = 'Request failed: ' + e.message;
+        document.getElementById('errorBox').style.display = 'block';
+      } finally {
+        btn.disabled = false;
+      }
+    }
+  </script>
+</body>
+</html>

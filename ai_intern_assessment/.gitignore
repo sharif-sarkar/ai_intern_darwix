@@ -1,0 +1,27 @@
+# Virtual Environments
+venv/
+env/
+ENV/
+.venv/
+challenge*/venv/
+
+# Python Cache
+__pycache__/
+*.py[cod]
+*$py.class
+
+# IDE / Editor
+.vscode/
+.idea/
+.qodo/
+
+# OS generated files
+.DS_Store
+Thumbs.db
+
+# Project specific
+outputs/
+*.mp3
+
+# Environment Variables
+.env
