@@ -1,4 +1,4 @@
-# AI Intern Assessment — Complete Solutions
+# AI Intern Assessment
 
 This repo contains full solutions for both assessment challenges.
 
