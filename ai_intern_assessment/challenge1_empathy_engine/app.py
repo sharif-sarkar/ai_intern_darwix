@@ -1,12 +1,3 @@
-"""
-app.py — Empathy Engine
------------------------
-Runs as either a FastAPI web service or a CLI tool.
-
-Web mode:  uvicorn app:app --reload --port 8000
-CLI mode:  python app.py --cli --text "Your text here"
-"""
-
 import argparse
 import json
 import os
@@ -22,18 +13,12 @@ from fastapi.templating import Jinja2Templates
 from emotion_detector import EmotionDetector
 from tts_engine import TTSEngine
 
-# ──────────────────────────────────────────────────────────────────────────────
-# App bootstrap
-# ──────────────────────────────────────────────────────────────────────────────
-
 app = FastAPI(title="Empathy Engine", version="1.0")
 
 OUTPUT_DIR = Path("outputs")
 OUTPUT_DIR.mkdir(exist_ok=True)
 
 templates = Jinja2Templates(directory="templates")
-
-# Lazy-load heavy models once, shared across requests
 _detector: EmotionDetector | None = None
 _engine: TTSEngine | None = None
 
@@ -52,10 +37,6 @@ def get_engine() -> TTSEngine:
     return _engine
 
 
-# ──────────────────────────────────────────────────────────────────────────────
-# Routes
-# ──────────────────────────────────────────────────────────────────────────────
-
 @app.get("/", response_class=HTMLResponse)
 async def index(request: Request):
     return templates.TemplateResponse("index.html", {"request": request})
@@ -63,10 +44,6 @@ async def index(request: Request):
 
 @app.post("/synthesize")
 async def synthesize(request: Request, text: str = Form(...)):
-    """
-    Accepts POST form data with `text`.
-    Returns JSON: { emotion, confidence, vocal_params, audio_url, all_emotions }
-    """
     if not text.strip():
         return JSONResponse({"error": "Text cannot be empty."}, status_code=400)
 
@@ -95,11 +72,6 @@ async def serve_audio(filename: str):
         return JSONResponse({"error": "File not found."}, status_code=404)
     return FileResponse(str(path), media_type="audio/mpeg")
 
-
-# ──────────────────────────────────────────────────────────────────────────────
-# CLI mode
-# ──────────────────────────────────────────────────────────────────────────────
-
 def run_cli(text: str, output: str = "output.mp3"):
     detector = EmotionDetector()
     engine = TTSEngine()
@@ -123,11 +95,6 @@ def run_cli(text: str, output: str = "output.mp3"):
     engine.synthesize(text, analysis["vocal_params"], output)
     print(f"\n  ✅ Audio saved to: {output}")
     print(f"{'='*60}\n")
-
-
-# ──────────────────────────────────────────────────────────────────────────────
-# Entry point
-# ──────────────────────────────────────────────────────────────────────────────
 
 if __name__ == "__main__":
     parser = argparse.ArgumentParser(description="Empathy Engine")
